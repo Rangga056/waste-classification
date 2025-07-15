@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { CloudUpload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function UploadForm() {
   const router = useRouter();
@@ -82,6 +83,9 @@ export default function UploadForm() {
 
   return (
     <div className="bg-white p-8 rounded-2xl shadow-xl max-w-4xl mx-auto">
+      <Link href="/" className="text-blue-600 hover:underline">
+        ← Back to Home Page
+      </Link>
       <h1 className="text-3xl font-bold text-center mb-2 text-gray-800">
         Upload Your Images
       </h1>

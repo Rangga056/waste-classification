@@ -27,7 +27,7 @@ export default function HomePage() {
             <Link href="/upload">
               <Button
                 size="lg"
-                className="w-full sm:w-auto px-8 py-4 text-lg font-semibold bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                className="w-full sm:w-auto px-8 py-4 cursor-pointer text-lg font-semibold bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-300 h-12"
               >
                 🚀 Mulai Upload
               </Button>
@@ -36,7 +36,7 @@ export default function HomePage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="w-full sm:w-auto px-8 py-4 text-lg font-semibold border-2 border-green-600 text-green-600 hover:bg-green-50 shadow-lg hover:shadow-xl transition-all duration-300"
+                className="w-full sm:w-auto px-8 py-4 cursor-pointer text-lg font-semibold border-2 border-green-600 text-green-600 hover:bg-green-50 shadow-lg hover:shadow-xl transition-all duration-300 h-12"
               >
                 📊 Lihat Semua Submissions
               </Button>

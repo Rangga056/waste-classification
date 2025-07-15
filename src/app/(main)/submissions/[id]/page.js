@@ -7,7 +7,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export default async function SubmissionDetailPage({ params }) {
-  const { id } = params;
+  const { id } = await params;
   const submissionId = parseInt(id);
 
   // 1. Get submission
@@ -35,7 +35,7 @@ export default async function SubmissionDetailPage({ params }) {
     : [];
 
   const classificationMap = new Map(
-    classificationResults.map((c) => [c.imageId, c]),
+    classificationResults.map((c) => [c.imageId, c])
   );
 
   return (
