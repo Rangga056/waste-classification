@@ -9,16 +9,30 @@ import { CloudUpload, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { toast } from "sonner";
+import { useSession } from "next-auth/react"; // Impor useSession
 
 export default function UploadForm() {
   const router = useRouter();
-  // State now holds file objects with a 'preview' URL property
+  const { data: session } = useSession(); // Dapatkan sesi pengguna
+
   const [files, setFiles] = useState([]);
-  const [username, setUsername] = useState("");
-  const [message, setMessage] = useState(""); // For user feedback
+  // Inisialisasi username dari sesi jika tersedia
+  const [username, setUsername] = useState(
+    session?.user?.name || session?.user?.email || ""
+  );
+  const [loading, setLoading] = useState(false);
+
+  // Perbarui username jika sesi berubah (misal: setelah login/logout)
+  useEffect(() => {
+    if (session?.user) {
+      setUsername(session.user.name || session.user.email);
+    } else {
+      setUsername(""); // Kosongkan jika tidak ada sesi
+    }
+  }, [session]);
 
   const onDrop = useCallback((acceptedFiles) => {
-    // Create a preview URL for each accepted file
     const filesWithPreview = acceptedFiles.map((file) =>
       Object.assign(file, {
         preview: URL.createObjectURL(file),
@@ -39,22 +53,25 @@ export default function UploadForm() {
     setFiles(files.filter((file) => file.name !== fileName));
   };
 
-  // Clean up the preview URLs to prevent memory leaks
   useEffect(() => {
     return () => files.forEach((file) => URL.revokeObjectURL(file.preview));
   }, [files]);
 
   async function handleSubmit(event) {
     event.preventDefault();
-    setMessage("Uploading...");
+    setLoading(true);
+    toast.info("Mengunggah gambar...", { duration: 2000 });
 
-    if (!username || files.length === 0) {
-      setMessage("Please provide a username and at least one file.");
+    if (files.length === 0) {
+      toast.error("Silakan pilih setidaknya satu file gambar.", {
+        duration: 3000,
+      });
+      setLoading(false);
       return;
     }
 
     const formData = new FormData();
-    formData.append("username", username);
+    // Username tidak lagi dikirim dari input form karena sudah diambil dari sesi di API route
     files.forEach((file) => formData.append("images", file));
 
     try {
@@ -64,50 +81,54 @@ export default function UploadForm() {
       });
 
       if (res.ok) {
-        setMessage("Upload successful! Redirecting...");
-        // Use a timeout to allow the user to see the success message
-        setTimeout(() => {
-          setFiles([]);
-          setUsername("");
-          router.push("/submissions");
-        }, 1500);
+        toast.success("Unggahan berhasil! Klasifikasi dimulai...", {
+          duration: 2000,
+        });
+        setFiles([]);
+        // Username tidak perlu direset karena akan diisi ulang dari sesi
+        router.push("/submissions");
       } else {
         const errorData = await res.json();
-        setMessage(`Upload failed: ${errorData.message || "Unknown error"}`);
+        toast.error(
+          `Unggahan gagal: ${errorData.message || "Kesalahan tidak diketahui"}`,
+          { duration: 5000 }
+        );
+        console.error("Upload failed:", errorData);
       }
     } catch (error) {
-      setMessage("An error occurred during upload.");
-      console.error(error);
+      toast.error("Terjadi kesalahan saat mengunggah.", { duration: 5000 });
+      console.error("An error occurred during upload:", error);
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
     <div className="bg-white p-8 rounded-2xl shadow-xl max-w-4xl mx-auto">
       <Link href="/" className="text-blue-600 hover:underline">
-        ← Back to Home Page
+        ← Kembali ke Beranda
       </Link>
       <h1 className="text-3xl font-bold text-center mb-2 text-gray-800">
-        Upload Your Images
+        Unggah Gambar Anda
       </h1>
       <p className="text-center text-gray-500 mb-8">
-        Drag and drop or click to select files for classification.
+        Seret dan lepas atau klik untuk memilih file untuk klasifikasi.
       </p>
       <form
         onSubmit={handleSubmit}
         className="grid grid-cols-1 md:grid-cols-2 gap-8"
       >
-        {/* Left side: Form inputs */}
         <div className="space-y-6">
           <div>
             <Label className="block text-lg font-medium text-gray-700 mb-2">
               Username
             </Label>
             <Input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={username} // Nilai ini akan otomatis terisi
+              onChange={(e) => setUsername(e.target.value)} // Tetap ada untuk kepatuhan React, tapi tidak akan banyak berubah
               className="px-4 py-2 h-12 text-base border-gray-300 rounded-lg w-full focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Enter your name"
-              required
+              placeholder="Nama pengguna Anda"
+              disabled // Nonaktifkan karena nilai diambil dari sesi
             />
           </div>
           <div
@@ -122,23 +143,22 @@ export default function UploadForm() {
             <CloudUpload className="text-blue-500 h-16 w-16 mb-4" />
             {isDragActive ? (
               <p className="text-blue-600 font-semibold">
-                Drop the files here...
+                Jatuhkan file di sini...
               </p>
             ) : (
               <p className="text-gray-600">
-                Drag & drop images here, or{" "}
+                Seret & lepas gambar di sini, atau{" "}
                 <span className="font-semibold text-blue-600">
-                  click to select
+                  klik untuk memilih
                 </span>
               </p>
             )}
           </div>
         </div>
 
-        {/* Right side: File previews */}
         <div className="space-y-4">
           <h2 className="text-lg font-medium text-gray-700">
-            Image Previews ({files.length})
+            Pratinjau Gambar ({files.length})
           </h2>
           {files.length > 0 ? (
             <ul className="h-80 overflow-y-auto space-y-3 p-3 bg-gray-50 rounded-lg border">
@@ -151,10 +171,9 @@ export default function UploadForm() {
                     <Image
                       src={file.preview}
                       alt={file.name}
-                      width={64} // Added width
-                      height={64} // Added height
+                      width={64}
+                      height={64}
                       className="rounded-md object-cover"
-                      // This is called when the image is loaded
                       onLoad={() => {
                         URL.revokeObjectURL(file.preview);
                       }}
@@ -181,23 +200,21 @@ export default function UploadForm() {
             </ul>
           ) : (
             <div className="h-80 flex items-center justify-center bg-gray-50 rounded-lg border">
-              <p className="text-gray-400">No files selected</p>
+              <p className="text-gray-400">Tidak ada file yang dipilih</p>
             </div>
           )}
         </div>
 
-        {/* Submission button and message */}
         <div className="md:col-span-2 w-full flex flex-col justify-center items-center gap-4 mt-4">
           <Button
             type="submit"
             className={
               "w-full md:w-1/2 h-12 text-lg font-semibold cursor-pointer"
             }
-            disabled={!username || files.length === 0}
+            disabled={files.length === 0 || loading}
           >
-            Upload
+            {loading ? "Mengunggah..." : "Unggah"}
           </Button>
-          {message && <p className="text-center text-gray-600">{message}</p>}
         </div>
       </form>
     </div>
