@@ -31,7 +31,7 @@ export const authOptions = {
           credentials.password === "123456"
         ) {
           return {
-            id: "cl-admin-12345",
+            id: "b67fcb00-62e8-11f0-b5ee-448763b8acc4",
             name: "Administrator",
             email: "admin@example.com",
             role: "admin", // Tetapkan peran 'admin'
@@ -46,7 +46,7 @@ export const authOptions = {
         if (userFound) {
           const passwordMatch = await bcrypt.compare(
             credentials.password,
-            userFound.password
+            userFound.password,
           );
 
           if (passwordMatch) {
