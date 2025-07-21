@@ -81,24 +81,27 @@ export default async function AdminUserDetailPage({ params }) {
   return (
     <main className="flex min-h-screen flex-col gap-8 p-8 md:p-12">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">
-          Pengiriman oleh {user.name || user.email}
-        </h1>
+        <h1 className="text-xl md:text-3xl font-bold">Detail Pengiriman</h1>
         <div className="flex gap-2">
           <Link href="/admin/users">
-            <Button variant="outline">← Kembali ke Daftar Pengguna</Button>
+            <Button variant="link" className="h-14 md:h-12 cursor-pointer ">
+              ← Kembali ke Daftar Pengguna
+            </Button>
           </Link>
           <Link href="/admin/dashboard">
-            <Button variant="secondary">Dashboard Admin</Button>
+            <Button
+              variant="secondary"
+              className="cursor-pointer hover:shadow-md transition-shadow border md:h-12 hidden md:block"
+            >
+              Dashboard Admin
+            </Button>
           </Link>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl font-bold">
-            Ringkasan Pengguna
-          </CardTitle>
+          <CardTitle className="text-2xl font-bold">Profil Pengguna</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <p>
@@ -116,112 +119,117 @@ export default async function AdminUserDetailPage({ params }) {
         </CardContent>
       </Card>
 
-      {submissionsWithDetails.length === 0 ? (
-        <p className="text-muted-foreground text-center">
-          Pengguna ini belum memiliki pengiriman.
-        </p>
-      ) : (
-        submissionsWithDetails.map((submission) => (
-          <Card key={submission.id}>
-            <CardHeader>
-              <CardTitle className="text-xl">
-                Pengiriman #{submission.id} -{" "}
-                {new Date(submission.uploadedAt).toLocaleString()}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {submission.images.map((img) => {
-                  const currentStatus = img.status || "Unknown";
-                  const isProcessing =
-                    currentStatus === "Pending" ||
-                    currentStatus === "Processing";
-                  const isFailed = currentStatus === "Failed";
-                  const isCompleted = currentStatus === "Completed";
-                  const result = img.classification;
+      <div className="flex flex-wrap gap-4 justify-center md:justify-start">
+        {submissionsWithDetails.length === 0 ? (
+          <p className="text-muted-foreground text-center">
+            Pengguna ini belum memiliki pengiriman.
+          </p>
+        ) : (
+          submissionsWithDetails.map((submission) => (
+            <Card key={submission.id} className="w-fit py-6">
+              <CardHeader>
+                <CardTitle className="text-xl flex flex-col items-start">
+                  Pengiriman #{submission.id} -{" "}
+                  <p className="text-muted-foreground text-base">
+                    {" "}
+                    {new Date(submission.uploadedAt).toLocaleString()}
+                  </p>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-4 w-full mx-auto">
+                  {submission.images.map((img) => {
+                    const currentStatus = img.status || "Unknown";
+                    const isProcessing =
+                      currentStatus === "Pending" ||
+                      currentStatus === "Processing";
+                    const isFailed = currentStatus === "Failed";
+                    const isCompleted = currentStatus === "Completed";
+                    const result = img.classification;
 
-                  return (
-                    <Card key={img.id} className="overflow-hidden">
-                      <CardContent className="p-0">
-                        <Image
-                          src={img.imageUrl}
-                          alt={`Gambar yang diunggah ${img.id}`}
-                          width={400}
-                          height={300}
-                          className="w-full h-48 object-cover"
-                        />
-                        <div className="p-3 space-y-1">
-                          <div className="flex items-center gap-2 text-sm font-semibold">
-                            {isProcessing && (
-                              <>
-                                <RefreshCw
-                                  className="animate-spin text-blue-500"
-                                  size={16}
-                                />
-                                <span className="text-blue-500">
-                                  Status: Memproses...
+                    return (
+                      <Card key={img.id} className="overflow-hidden p-0">
+                        <CardContent className="p-0">
+                          <Image
+                            src={img.imageUrl}
+                            alt={`Gambar yang diunggah ${img.id}`}
+                            width={400}
+                            height={300}
+                            className="w-full h-48 object-cover"
+                          />
+                          <div className="p-3 space-y-1">
+                            <div className="flex items-center gap-2 text-sm font-semibold">
+                              {isProcessing && (
+                                <>
+                                  <RefreshCw
+                                    className="animate-spin text-blue-500"
+                                    size={16}
+                                  />
+                                  <span className="text-blue-500">
+                                    Status: Memproses...
+                                  </span>
+                                </>
+                              )}
+                              {isCompleted && (
+                                <>
+                                  <CheckCircle
+                                    className="text-green-500"
+                                    size={16}
+                                  />
+                                  <span className="text-green-500 text-base">
+                                    Status: Selesai
+                                  </span>
+                                </>
+                              )}
+                              {isFailed && (
+                                <>
+                                  <XCircle className="text-red-500" size={16} />
+                                  <span className="text-red-500 text-base">
+                                    Status: Gagal
+                                  </span>
+                                </>
+                              )}
+                              {!isProcessing && !isCompleted && !isFailed && (
+                                <span className="text-muted-foreground text-base">
+                                  Status: Tidak Diketahui
                                 </span>
+                              )}
+                            </div>
+
+                            {isCompleted && result?.classificationResult && (
+                              <>
+                                <p className="text-sm font-semibold">
+                                  Klasifikasi:{" "}
+                                  <span className="text-blue-600">
+                                    {result.classificationResult}
+                                  </span>
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  Kepercayaan:{" "}
+                                  {result.confidence?.toFixed(2) ?? "–"}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  Jumlah Sampah: {result.wasteCount ?? "–"}
+                                </p>
                               </>
                             )}
-                            {isCompleted && (
-                              <>
-                                <CheckCircle
-                                  className="text-green-500"
-                                  size={16}
-                                />
-                                <span className="text-green-500">
-                                  Status: Selesai
-                                </span>
-                              </>
-                            )}
-                            {isFailed && (
-                              <>
-                                <XCircle className="text-red-500" size={16} />
-                                <span className="text-red-500">
-                                  Status: Gagal
-                                </span>
-                              </>
-                            )}
-                            {!isProcessing && !isCompleted && !isFailed && (
-                              <span className="text-muted-foreground">
-                                Status: Tidak Diketahui
-                              </span>
+                            {!isCompleted && (
+                              <p className="text-sm text-muted-foreground">
+                                Hasil akan muncul di sini setelah klasifikasi
+                                selesai.
+                              </p>
                             )}
                           </div>
-
-                          {isCompleted && result?.classificationResult && (
-                            <>
-                              <p className="text-sm font-semibold">
-                                Klasifikasi:{" "}
-                                <span className="text-blue-600">
-                                  {result.classificationResult}
-                                </span>
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                Kepercayaan:{" "}
-                                {result.confidence?.toFixed(2) ?? "–"}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                Jumlah Sampah: {result.wasteCount ?? "–"}
-                              </p>
-                            </>
-                          )}
-                          {!isCompleted && (
-                            <p className="text-sm text-muted-foreground">
-                              Hasil akan muncul di sini setelah klasifikasi
-                              selesai.
-                            </p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        ))
-      )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
     </main>
   );
 }

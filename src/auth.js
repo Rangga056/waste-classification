@@ -5,6 +5,7 @@ import { db } from "@/db/db";
 import { users, accounts, sessions, verificationTokens } from "@/db/schema";
 import CredentialsProvider from "next-auth/providers/credentials"; // Perhatikan nama CredentialsProvider
 import bcrypt from "bcryptjs";
+import { cookies } from "next/headers";
 
 // Fungsi auth, signIn, signOut akan diekspor dari handler di route.js
 // Untuk next-auth v4, kita tidak langsung mendestrukturisasi handlers di sini
@@ -46,7 +47,7 @@ export const authOptions = {
         if (userFound) {
           const passwordMatch = await bcrypt.compare(
             credentials.password,
-            userFound.password,
+            userFound.password
           );
 
           if (passwordMatch) {
@@ -65,6 +66,18 @@ export const authOptions = {
   ],
   session: {
     strategy: "jwt",
+  },
+  cookies: {
+    name: "next-auth.session-token",
+    options: {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      // Setting 'expires: false' makes it a session cookie,
+      // which browsers typically clear when the browser window is closed.
+      expires: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours from now in milliseconds
+    },
   },
   callbacks: {
     // Untuk next-auth v4, 'user' adalah objek yang dikembalikan dari authorize()

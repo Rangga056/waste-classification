@@ -9,7 +9,7 @@ function ImagePreview({ imageUrl, username }) {
   };
 
   return (
-    <div className="flex-shrink-0 w-24 h-24 rounded-md overflow-hidden bg-gray-100 flex items-center justify-center">
+    <div className="flex-shrink-0 w-full h-[175px] rounded-md overflow-hidden bg-gray-100 flex items-center justify-center">
       {imageUrl ? (
         <img
           src={imageUrl}

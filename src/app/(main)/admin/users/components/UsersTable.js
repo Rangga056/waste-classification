@@ -32,7 +32,7 @@ const columns = [
     header: "Aksi",
     cell: ({ row }) => (
       <Link href={`/admin/users/${row.original.id}`}>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" className="cursor-pointer">
           Lihat Pengiriman
         </Button>
       </Link>

@@ -68,7 +68,7 @@ export default function SubmissionsPageWrapper() {
         const hasPending =
           submissionsData?.previewDataMap &&
           Array.from(submissionsData.previewDataMap.values()).some(
-            (img) => img.status === "Pending" || img.status === "Processing"
+            (img) => img.status === "Pending" || img.status === "Processing",
           );
         if (hasPending) {
           refreshData();
@@ -81,7 +81,7 @@ export default function SubmissionsPageWrapper() {
 
   if (status === "loading" || loading || !submissionsData) {
     return (
-      <main className="max-w-3xl mx-auto p-6 space-y-4 text-center">
+      <main className="container mx-auto p-6 space-y-4 text-center">
         <p className="text-muted-foreground">Memuat pengiriman...</p>
         <RefreshCw className="animate-spin mx-auto text-blue-500" size={24} />
       </main>
@@ -91,24 +91,22 @@ export default function SubmissionsPageWrapper() {
   const { allSubmissions, previewDataMap, imageCountMap } = submissionsData;
 
   return (
-    <main className="max-w-3xl mx-auto p-6 space-y-4">
+    <main className="container mx-auto p-6 space-y-4">
       <div className="flex justify-between items-center mb-4">
         <Link href="/" className="text-blue-600 hover:underline">
           ← Kembali ke Beranda
         </Link>
         {session ? (
           <div className="flex items-center gap-2">
-            <span className="text-gray-700">
+            <span className="text-gray-700 hidden md:block">
               Halo, {session.user.name || session.user.email}!
             </span>
-            {session.user.role === "admin" && (
-              <Link href="/admin/dashboard">
-                <Button size="sm" variant="secondary">
-                  Dashboard Admin
-                </Button>
-              </Link>
-            )}
-            <Button onClick={() => signOut()} size="sm" variant="outline">
+            <Button
+              onClick={() => signOut()}
+              size="lg"
+              variant="destructive"
+              className="cursor-pointer hover:shadow-md transition-shadow"
+            >
               Keluar
             </Button>
           </div>
@@ -118,112 +116,145 @@ export default function SubmissionsPageWrapper() {
           </Link>
         )}
       </div>
+      <div className="flex items-center justify-between w-full">
+        <h1 className="text-xl md:text-2xl font-bold my-4">Semua Pengiriman</h1>
+        {session.user.role === "admin" && (
+          <Link href="/admin/dashboard">
+            <Button
+              size="sm"
+              variant="secondary"
+              className={
+                "cursor-pointer hover:shadow-md transition-shadow border h-14 md:h-12"
+              }
+            >
+              Dashboard <br className="block md:hidden" />
+              Admin
+            </Button>
+          </Link>
+        )}
+      </div>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
+        {allSubmissions.length === 0 ? (
+          <p className="text-muted-foreground">
+            Tidak ada pengiriman ditemukan.
+          </p>
+        ) : (
+          allSubmissions.map((submission) => {
+            const preview = previewDataMap.get(submission.id);
+            const isProcessing =
+              preview?.status === "Pending" || preview?.status === "Processing";
+            const isFailed = preview?.status === "Failed";
+            const isCompleted = preview?.status === "Completed";
 
-      <h1 className="text-2xl font-bold my-4">Semua Pengiriman</h1>
-      {allSubmissions.length === 0 ? (
-        <p className="text-muted-foreground">Tidak ada pengiriman ditemukan.</p>
-      ) : (
-        allSubmissions.map((submission) => {
-          const preview = previewDataMap.get(submission.id);
-          const isProcessing =
-            preview?.status === "Pending" || preview?.status === "Processing";
-          const isFailed = preview?.status === "Failed";
-          const isCompleted = preview?.status === "Completed";
+            return (
+              <Card key={submission.id} className={"py-0"}>
+                <CardContent className="p-4 flex items-center gap-4 flex-col">
+                  <ImagePreview
+                    imageUrl={preview?.imageUrl}
+                    username={submission.username}
+                  />
 
-          return (
-            <Card key={submission.id}>
-              <CardContent className="p-4 flex items-center gap-4">
-                <ImagePreview
-                  imageUrl={preview?.imageUrl}
-                  username={submission.username}
-                />
+                  <div className="w-full flex flex-col gap-y-[0.5em]">
+                    <p className="font-semibold capitalize">
+                      {submission.username}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Diunggah pada:{" "}
+                      {new Date(submission.uploadedAt).toLocaleString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {imageCountMap.get(submission.id) || 0} Gambar
+                    </p>
 
-                <div className="flex-grow">
-                  <p className="font-semibold">{submission.username}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Diunggah pada:{" "}
-                    {new Date(submission.uploadedAt).toLocaleString()}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {imageCountMap.get(submission.id) || 0} gambar
-                  </p>
-
-                  <div className="flex items-center gap-2 text-sm">
-                    {isProcessing && (
-                      <>
-                        <RefreshCw
-                          className="animate-spin text-blue-500"
-                          size={16}
-                        />
-                        <span className="text-blue-500">Memproses...</span>
-                      </>
-                    )}
-                    {isCompleted && (
-                      <>
-                        <CheckCircle className="text-green-500" size={16} />
-                        <span className="text-green-500">
-                          Klasifikasi Selesai
+                    <div className="flex items-center gap-2 text-sm">
+                      {isProcessing && (
+                        <>
+                          <RefreshCw
+                            className="animate-spin text-blue-500"
+                            size={16}
+                          />
+                          <span className="text-blue-500">Memproses...</span>
+                        </>
+                      )}
+                      {isCompleted && (
+                        <>
+                          <CheckCircle className="text-green-500" size={16} />
+                          <span className="text-green-500">
+                            Klasifikasi Selesai
+                          </span>
+                        </>
+                      )}
+                      {isFailed && (
+                        <>
+                          <XCircle className="text-red-500" size={16} />
+                          <span className="text-red-500">
+                            Klasifikasi Gagal
+                          </span>
+                        </>
+                      )}
+                      {!isProcessing && !isCompleted && !isFailed && (
+                        <span className="text-muted-foreground">
+                          Status Tidak Diketahui
                         </span>
-                      </>
-                    )}
-                    {isFailed && (
+                      )}
+                    </div>
+
+                    {isCompleted && preview?.classificationResult && (
                       <>
-                        <XCircle className="text-red-500" size={16} />
-                        <span className="text-red-500">Klasifikasi Gagal</span>
+                        <p className="text-sm">
+                          Klasifikasi:{" "}
+                          <span className="text-blue-600">
+                            {preview.classificationResult}
+                          </span>{" "}
+                          (Kepercayaan: {preview.confidence?.toFixed(2) ?? "–"})
+                        </p>
+                        <p className="text-sm">
+                          Jumlah Sampah: {preview.wasteCount ?? "–"}
+                        </p>
                       </>
                     )}
-                    {!isProcessing && !isCompleted && !isFailed && (
-                      <span className="text-muted-foreground">
-                        Status Tidak Diketahui
-                      </span>
-                    )}
                   </div>
+                  <form action={deleteSubmission.bind(null, submission.id)}>
+                    <div className="flex flex-row gap-2 items-center justify-center gap-x-4">
+                      {isProcessing ? (
+                        <Button
+                          className="text-gray-400 cursor-not-allowed py-2 px-6 w-32"
+                          size="lg"
+                        >
+                          Lihat Detail
+                        </Button>
+                      ) : (
+                        <Link
+                          className="text-blue-600 hover:underline cursor-pointer"
+                          href={`/submissions/${submission.id}`}
+                        >
+                          <Button
+                            size="lg"
+                            className="py-2 px-6 w-32 cursor-pointer"
+                          >
+                            Lihat Detail
+                          </Button>
+                        </Link>
+                      )}
 
-                  {isCompleted && preview?.classificationResult && (
-                    <>
-                      <p className="text-sm">
-                        Klasifikasi:{" "}
-                        <span className="text-blue-600">
-                          {preview.classificationResult}
-                        </span>{" "}
-                        (Kepercayaan: {preview.confidence?.toFixed(2) ?? "–"})
-                      </p>
-                      <p className="text-sm">
-                        Jumlah Sampah: {preview.wasteCount ?? "–"}
-                      </p>
-                    </>
-                  )}
-                </div>
-                <form action={deleteSubmission.bind(null, submission.id)}>
-                  <div className="flex flex-col gap-2 items-end">
-                    {isProcessing ? (
-                      <span className="text-gray-400 cursor-not-allowed">
-                        Lihat Detail
-                      </span>
-                    ) : (
-                      <Link
-                        className="text-blue-600 hover:underline"
-                        href={`/submissions/${submission.id}`}
-                      >
-                        Lihat Detail
-                      </Link>
-                    )}
-
-                    {session?.user?.role === "admin" && ( // Hanya tampilkan tombol hapus untuk admin
-                      <button
-                        type="submit"
-                        className="text-red-600 hover:underline"
-                      >
-                        Hapus
-                      </button>
-                    )}
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          );
-        })
-      )}
+                      {session?.user?.role === "admin" && ( // Hanya tampilkan tombol hapus untuk admin
+                        <button
+                          type="submit"
+                          className="text-red-600 border border-red-500 py-2 px-6 rounded-md cursor-pointer w-32"
+                          variant="destructive"
+                          size="lg"
+                        >
+                          Hapus
+                        </button>
+                      )}
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </div>
     </main>
   );
 }

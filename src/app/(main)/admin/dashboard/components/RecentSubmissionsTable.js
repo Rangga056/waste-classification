@@ -4,6 +4,7 @@
 import { DataTable } from "@/components/shared/DataTable";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ExternalLink } from "lucide-react";
 
 // Definisi kolom untuk tabel submissions terbaru
 // Didefinisikan di Client Component karena mengandung fungsi 'cell'
@@ -33,8 +34,9 @@ const columns = [
     header: "Aksi",
     cell: ({ row }) => (
       <Link href={`/submissions/${row.original.id}`}>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="lg" className="w-fit cursor-pointer">
           Lihat Detail
+          <ExternalLink className="w-10 h-10" />
         </Button>
       </Link>
     ),

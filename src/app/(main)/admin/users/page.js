@@ -41,11 +41,16 @@ export default async function AdminUsersPage() {
   }));
 
   return (
-    <main className="flex min-h-screen flex-col gap-8 p-8 md:p-12">
+    <main className="flex min-h-screen flex-col gap-8 p-4 md:p-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Daftar Pengguna</h1>
+        <h1 className="text-xl md:text-3xl font-bold">Daftar Pengguna</h1>
         <Link href="/admin/dashboard">
-          <Button variant="outline">← Kembali ke Dashboard</Button>
+          <Button
+            variant="outline"
+            className="text-sm md:text-lg cursor-pointer"
+          >
+            ← Kembali ke Dashboard
+          </Button>
         </Link>
       </div>
 

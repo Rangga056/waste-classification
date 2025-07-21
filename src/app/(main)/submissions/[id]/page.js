@@ -7,6 +7,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RefreshCw, CheckCircle, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
 
 // Tidak ada perubahan signifikan di sini karena ini adalah Server Component
 // dan tidak langsung menggunakan useSession.
@@ -38,17 +40,28 @@ export default async function SubmissionDetailPage({ params }) {
     : [];
 
   const classificationMap = new Map(
-    classificationResults.map((c) => [c.imageId, c])
+    classificationResults.map((c) => [c.imageId, c]),
   );
 
   return (
-    <main className="max-w-4xl mx-auto p-6 space-y-6">
-      <Link href="/submissions" className="text-blue-600 hover:underline">
-        ← Kembali ke Pengiriman
-      </Link>
+    <main className="container mx-auto p-6 space-y-6">
+      <div className="w-full flex item-center justify-between">
+        <Link href="/submissions" className="text-blue-600 hover:underline">
+          ← Kembali ke Pengiriman
+        </Link>
+        <Link href="/upload">
+          <Button
+            size="sm"
+            className="w-full px-6 py-2  cursor-pointer text-base font-semibold bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all duration-300 h-10 sm:h-12"
+          >
+            Tambah Unggahan
+            <Upload />
+          </Button>
+        </Link>
+      </div>
 
       <h1 className="text-2xl font-bold">Detail Pengiriman</h1>
-      <p className="text-muted-foreground">
+      <p className="">
         <strong>Nama Pengguna:</strong> {submission.username}
       </p>
       <p className="text-muted-foreground">
@@ -56,7 +69,7 @@ export default async function SubmissionDetailPage({ params }) {
         {new Date(submission.uploadedAt).toLocaleString()}
       </p>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-6">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,300px))] gap-4 justify-center">
         {images.map((img) => {
           const result = classificationMap.get(img.id);
           const currentStatus = img.status || "Unknown";
