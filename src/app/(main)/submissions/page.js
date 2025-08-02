@@ -10,6 +10,7 @@ import { RefreshCw, CheckCircle, XCircle } from "lucide-react";
 
 import { useSession, signOut } from "next-auth/react"; // Menggunakan next-auth/react
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 async function fetchSubmissionsData() {
   const res = await fetch("/api/submissions-status", {
@@ -38,6 +39,7 @@ async function fetchSubmissionsData() {
 }
 
 export default function SubmissionsPageWrapper() {
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [submissionsData, setSubmissionsData] = useState(null);
   const [loading, setLoading] = useState(true);
