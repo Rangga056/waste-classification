@@ -75,7 +75,7 @@ export default function UploadForm() {
     files.forEach((file) => formData.append("images", file));
 
     try {
-      const res = await fetch("/api/upload", {
+      const res = await fetch("/api/uploads", {
         method: "POST",
         body: formData,
       });

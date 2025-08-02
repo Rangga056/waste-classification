@@ -1,4 +1,4 @@
-// src/app/api/upload/route.js
+// src/app/api/uploads/route.js
 import { db } from "@/db/db";
 import {
   submissions,
@@ -91,7 +91,7 @@ export async function POST(req) {
       const filepath = path.join(uploadDir, filename);
       fs.writeFileSync(filepath, bytes);
 
-      const imageUrl = `/uploads/${filename}`;
+      const imageUrl = `/api/uploads/${filename}`;
 
       const [insertedImage] = await db.insert(submissionsImages).values({
         submissionId,

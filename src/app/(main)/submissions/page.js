@@ -49,6 +49,11 @@ export default function SubmissionsPageWrapper() {
     setLoading(false);
   };
 
+  const handleSignOut = async () => {
+    await signOut({ redirect: false }); // Prevent automatic redirect
+    router.push("/"); // Manually redirect to home page
+  };
+
   useEffect(() => {
     if (status === "authenticated") {
       refreshData();
@@ -68,7 +73,7 @@ export default function SubmissionsPageWrapper() {
         const hasPending =
           submissionsData?.previewDataMap &&
           Array.from(submissionsData.previewDataMap.values()).some(
-            (img) => img.status === "Pending" || img.status === "Processing",
+            (img) => img.status === "Pending" || img.status === "Processing"
           );
         if (hasPending) {
           refreshData();
@@ -102,7 +107,7 @@ export default function SubmissionsPageWrapper() {
               Halo, {session.user.name || session.user.email}!
             </span>
             <Button
-              onClick={() => signOut()}
+              onClick={handleSignOut}
               size="lg"
               variant="destructive"
               className="cursor-pointer hover:shadow-md transition-shadow"
