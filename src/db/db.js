@@ -1,19 +1,18 @@
-import mysql from "mysql2/promise";
-import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise"; // src/db/db.js
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "../db/schema.js";
+import postgres from "postgres";
 
-// Create a pooled MySQL connection
-const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  waitForConnections: true,
-  connectionLimit: 10,
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL environment variable is not set");
+}
+
+// Disable prefetch as it is not supported for "Transaction" pool mode
+export const client = postgres(connectionString, {
+  prepare: false,
+  max: 1, // Limit connections for serverless environments
 });
 
-// Create drizzle instance
-export const db = drizzle(pool, {
-  schema,
-  mode: "default",
-});
+export const db = drizzle(client, { schema });

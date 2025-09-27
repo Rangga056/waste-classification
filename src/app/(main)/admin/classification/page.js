@@ -1,6 +1,5 @@
 // src/app/(main)/admin/classification/page.js
-import { authOptions } from "@/auth";
-import { getServerSession } from "next-auth";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/db/db";
 import { classifications, submissionsImages, submissions } from "@/db/schema";
@@ -12,7 +11,7 @@ import Link from "next/link";
 import { CategoryClassificationTable } from "./components/CategoryClassificationTable";
 
 export default async function AdminClassificationPage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   // Protection: Only admin can access
   if (!session || !session.user || session.user.role !== "admin") {
@@ -48,7 +47,7 @@ export default async function AdminClassificationPage() {
     .from(classifications)
     .leftJoin(
       submissionsImages,
-      eq(classifications.imageId, submissionsImages.id)
+      eq(classifications.imageId, submissionsImages.id),
     )
     .leftJoin(submissions, eq(submissionsImages.submissionId, submissions.id))
     .where(eq(submissionsImages.status, "Completed"));
@@ -124,7 +123,7 @@ export default async function AdminClassificationPage() {
             category={category}
             data={submissionsList}
           />
-        )
+        ),
       )}
     </main>
   );

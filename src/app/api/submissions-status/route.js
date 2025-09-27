@@ -1,4 +1,4 @@
-// src/app/api/submissions-status/route.js - Alternative approach
+// src/app/api/submissions-status/route.js
 import { db } from "@/db/db";
 import {
   submissions,
@@ -6,151 +6,108 @@ import {
   classifications,
   users,
 } from "@/db/schema";
-import { desc, eq, sql, count } from "drizzle-orm";
+import { desc, eq, count, inArray, sql } from "drizzle-orm";
 import { NextResponse } from "next/server";
-
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
+import { auth } from "@/auth";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-
-  if (!session || !session.user) {
-    return new Response(JSON.stringify({ message: "Tidak terautentikasi." }), {
-      status: 401,
-    });
-  }
-
-  const userRole = session.user.role;
-  const currentUserId = session.user.id;
-
   try {
-    let allSubmissionsQuery;
-
-    if (userRole === "admin") {
-      allSubmissionsQuery = db
-        .select({
-          id: submissions.id,
-          userId: submissions.userId,
-          username: users.name, // Get username from users table
-          uploadedAt: submissions.uploadedAt,
-          userEmail: users.email,
-          userRole: users.role,
-        })
-        .from(submissions)
-        .leftJoin(users, eq(submissions.userId, users.id))
-        .orderBy(desc(submissions.uploadedAt));
-    } else {
-      allSubmissionsQuery = db
-        .select({
-          id: submissions.id,
-          userId: submissions.userId,
-          username: users.name, // Get username from users table
-          uploadedAt: submissions.uploadedAt,
-        })
-        .from(submissions)
-        .leftJoin(users, eq(submissions.userId, users.id))
-        .where(eq(submissions.userId, currentUserId))
-        .orderBy(desc(submissions.uploadedAt));
+    const session = await auth();
+    if (!session || !session.user) {
+      return new Response(
+        JSON.stringify({ message: "Tidak terautentikasi." }),
+        {
+          status: 401,
+        },
+      );
     }
 
-    const allSubmissions = (await allSubmissionsQuery) || [];
+    const { user } = session;
 
-    // Rest of the code remains the same...
-    const imageCountsResult =
-      (await db
-        .select({
-          submissionId: submissionsImages.submissionId,
-          count: count(submissionsImages.id).as("count"),
-        })
-        .from(submissionsImages)
-        .groupBy(submissionsImages.submissionId)) || [];
+    // 1. Ambil submission yang relevan (semua untuk admin, hanya milik sendiri untuk user)
+    const userSubmissions = await db
+      .select({
+        id: submissions.id,
+        userId: submissions.userId,
+        username: submissions.username,
+        uploadedAt: submissions.uploadedAt,
+      })
+      .from(submissions)
+      .where(
+        user.role === "admin" ? undefined : eq(submissions.userId, user.id),
+      )
+      .orderBy(desc(submissions.uploadedAt));
 
-    const previewImagesResult =
-      (await db
-        .select({
-          submissionId: submissionsImages.submissionId,
-          imageUrl: submissionsImages.imageUrl,
-          status: submissionsImages.status,
-          classificationResult: classifications.classificationResult,
-          confidence: classifications.confidence,
-          wasteCount: classifications.wasteCount,
-        })
-        .from(submissionsImages)
-        .leftJoin(
-          classifications,
-          eq(submissionsImages.id, classifications.imageId),
-        )) || [];
+    if (userSubmissions.length === 0) {
+      return NextResponse.json({
+        allSubmissions: [],
+        previewDataArray: [],
+        imageCountArray: [],
+      });
+    }
+
+    const submissionIds = userSubmissions.map((s) => s.id);
+
+    // 2. Ambil semua data terkait dalam beberapa kueri efisien
+    const allImages = await db
+      .select()
+      .from(submissionsImages)
+      .where(inArray(submissionsImages.submissionId, submissionIds));
+
+    const imageIds = allImages.map((img) => img.id);
+
+    const allClassifications =
+      imageIds.length > 0
+        ? await db
+            .select()
+            .from(classifications)
+            .where(inArray(classifications.imageId, imageIds))
+        : [];
+
+    const imageCounts = await db
+      .select({
+        submissionId: submissionsImages.submissionId,
+        count: count(submissionsImages.id).as("count"),
+      })
+      .from(submissionsImages)
+      .where(inArray(submissionsImages.submissionId, submissionIds))
+      .groupBy(submissionsImages.submissionId);
+
+    // 3. Proses dan gabungkan data
+    const classificationsMap = new Map(
+      allClassifications.map((c) => [c.imageId, c]),
+    );
+    const imageCountMap = new Map(
+      imageCounts.map((row) => [row.submissionId, row.count]),
+    );
 
     const previewDataMap = new Map();
-
-    previewImagesResult.forEach((data) => {
-      if (data && typeof data === "object" && data.submissionId !== undefined) {
-        if (!previewDataMap.has(data.submissionId)) {
-          previewDataMap.set(data.submissionId, {
-            imageUrl: data.imageUrl ?? null,
-            status: data.status ?? "Unknown",
-            classificationResult: data.classificationResult ?? null,
-            confidence: data.confidence ?? null,
-            wasteCount: data.wasteCount ?? null,
-          });
-        }
-      } else {
-        console.warn(
-          "Skipping invalid or incomplete previewImagesResult data row:",
-          data,
-        );
+    // Cari gambar pertama untuk setiap submission sebagai preview
+    for (const submission of userSubmissions) {
+      const firstImage = allImages.find(
+        (img) => img.submissionId === submission.id,
+      );
+      if (firstImage) {
+        const classification = classificationsMap.get(firstImage.id);
+        previewDataMap.set(submission.id, {
+          imageUrl: firstImage.imageUrl,
+          status: firstImage.status,
+          classificationResult: classification?.classificationResult,
+          confidence: classification?.confidence,
+          wasteCount: classification?.wasteCount,
+        });
       }
-    });
-
-    const serializedAllSubmissions = allSubmissions
-      .map((submission) => {
-        if (!submission || typeof submission !== "object") {
-          console.warn("Skipping invalid submission row:", submission);
-          return null;
-        }
-        return {
-          id: submission.id,
-          userId: submission.userId,
-          username: submission.username ?? "Unknown User",
-          uploadedAt: submission.uploadedAt,
-          userEmail: submission.userEmail ?? "N/A",
-          userRole: submission.userRole ?? "N/A",
-        };
-      })
-      .filter((item) => item !== null);
-
-    const imageCountArray = imageCountsResult
-      .map((row) => {
-        if (
-          row &&
-          typeof row === "object" &&
-          row.submissionId !== undefined &&
-          row.count !== undefined
-        ) {
-          return [row.submissionId, row.count];
-        }
-        console.warn(
-          "Skipping invalid or incomplete imageCountsResult row:",
-          row,
-        );
-        return null;
-      })
-      .filter((item) => item !== null);
-
-    const previewDataArray = previewDataMap
-      ? Array.from(previewDataMap.entries())
-      : [];
+    }
 
     return NextResponse.json({
-      allSubmissions: serializedAllSubmissions,
-      previewDataArray: previewDataArray,
-      imageCountArray: imageCountArray,
+      allSubmissions: userSubmissions,
+      previewDataArray: Array.from(previewDataMap.entries()),
+      imageCountArray: Array.from(imageCountMap.entries()),
     });
   } catch (error) {
-    console.error("Error fetching submissions status:", error);
+    console.error("!!! FATAL ERROR in /api/submissions-status:", error);
     return NextResponse.json(
-      { message: "Gagal mengambil submissions." },
+      { message: "Gagal mengambil submissions.", error: error.message },
       { status: 500 },
     );
   }

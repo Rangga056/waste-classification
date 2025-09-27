@@ -1,6 +1,5 @@
 // src/app/(main)/admin/dashboard/page.js
-import { authOptions } from "@/auth";
-import { getServerSession } from "next-auth";
+import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/db/db";
 import { submissions, users } from "@/db/schema";
@@ -15,7 +14,7 @@ import { Button } from "@/components/ui/button";
 // const columns = [ ... ];
 
 export default async function AdminDashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session || !session.user || session.user.role !== "admin") {
     redirect("/login");

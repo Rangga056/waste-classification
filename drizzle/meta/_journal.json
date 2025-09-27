@@ -1,40 +1,19 @@
 {
   "version": "7",
-  "dialect": "mysql",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1752214554871,
-      "tag": "0000_sloppy_agent_zero",
+      "version": "7",
+      "when": 1758944051497,
+      "tag": "0000_classy_proudstar",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "5",
-      "when": 1752733587161,
-      "tag": "0001_fancy_paibok",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1752734208015,
-      "tag": "0002_left_sandman",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1752738896248,
-      "tag": "0003_next_rachel_grey",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1752741199614,
-      "tag": "0004_useful_wrecker",
+      "version": "7",
+      "when": 1758945178098,
+      "tag": "0001_freezing_random",
       "breakpoints": true
     }
   ]

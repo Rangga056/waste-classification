@@ -1,6 +1,5 @@
 // src/app/(main)/admin/users/page.js
-import { authOptions } from "@/auth"; // Impor authOptions
-import { getServerSession } from "next-auth"; // Impor getServerSession
+import { auth } from "@/auth"; // Impor authOptions
 import { redirect } from "next/navigation";
 import { db } from "@/db/db";
 import { users, submissions } from "@/db/schema";
@@ -11,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { UsersTable } from "./components/UsersTable"; // Impor komponen Client baru
 
 export default async function AdminUsersPage() {
-  const session = await getServerSession(authOptions); // Dapatkan sesi di server
+  const session = await auth(); // Dapatkan sesi di server
 
   // Proteksi rute: Hanya admin yang bisa mengakses
   if (!session || !session.user || session.user.role !== "admin") {

@@ -6,7 +6,7 @@ import mime from "mime-types";
 
 export async function GET(req, { params }) {
   // 1. Construct the path
-  const filename = params.filename.join("/");
+  const filename = (await params).filename.join("/");
   const filepath = path.join(process.cwd(), "public", "uploads", filename);
 
   // --- DEBUGGING LOGS ---

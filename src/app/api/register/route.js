@@ -13,7 +13,7 @@ export async function POST(req) {
     if (!name || !email || !password) {
       return NextResponse.json(
         { message: "Nama, email, dan password harus diisi." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -25,7 +25,7 @@ export async function POST(req) {
     if (existingUser) {
       return NextResponse.json(
         { message: "Email sudah terdaftar." },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -33,23 +33,27 @@ export async function POST(req) {
     const hashedPassword = await bcrypt.hash(password, 10); // Salt rounds 10
 
     // Buat user baru di database
-    const [newUser] = await db.insert(users).values({
-      id: uuidv4(), // Generate UUID untuk ID user
-      name,
-      email,
-      password: hashedPassword,
-      role: "user", // Default role untuk user baru adalah 'user'
-    });
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        id: uuidv4(),
+        name,
+        email,
+        password: hashedPassword,
+        role: "user",
+      })
+      .returning(); // <-- Tambahkan .returning()
 
     return NextResponse.json(
-      { message: "Registrasi berhasil!", userId: newUser.insertId },
-      { status: 201 }
+      // Ganti newUser.insertId menjadi newUser.id
+      { message: "Registrasi berhasil!", userId: newUser.id },
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error during registration:", error);
     return NextResponse.json(
       { message: "Terjadi kesalahan server internal." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

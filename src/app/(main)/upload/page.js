@@ -1,11 +1,10 @@
 // src/app/(main)/upload/page.js
-import { authOptions } from "@/auth";
 import UploadForm from "./form";
-import { getServerSession } from "next-auth"; // Impor getServerSession
+import { auth } from "@/auth";
 import Link from "next/link";
 
 export default async function UploadPage() {
-  const session = await getServerSession(authOptions); // Dapatkan sesi di server
+  const session = await auth(); // Dapatkan sesi di server
 
   if (!session || !session.user) {
     return (

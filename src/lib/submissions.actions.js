@@ -5,11 +5,10 @@ import { db } from "@/db/db";
 import { submissions, submissionsImages, classifications } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
+import { auth } from "@/auth";
 
 export async function deleteSubmission(submissionId) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   // Dapatkan detail submission yang akan dihapus
   const [submissionToDelete] = await db
@@ -32,7 +31,7 @@ export async function deleteSubmission(submissionId) {
     session.user.id !== submissionToDelete?.userId
   ) {
     console.error(
-      "Akses ditolak: Anda tidak memiliki izin untuk menghapus submission ini."
+      "Akses ditolak: Anda tidak memiliki izin untuk menghapus submission ini.",
     );
     return { error: "Forbidden: You can only delete your own submissions." };
   }

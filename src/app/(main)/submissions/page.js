@@ -7,10 +7,10 @@ import { deleteSubmission } from "@/lib/submissions.actions";
 import React, { useState, useEffect } from "react";
 import ImagePreview from "./components/ImagePreview";
 import { RefreshCw, CheckCircle, XCircle } from "lucide-react";
-
-import { useSession, signOut } from "next-auth/react"; // Menggunakan next-auth/react
+import { useSession, signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 async function fetchSubmissionsData() {
   const res = await fetch("/api/submissions-status", {
@@ -43,17 +43,32 @@ export default function SubmissionsPageWrapper() {
   const { data: session, status } = useSession();
   const [submissionsData, setSubmissionsData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(null); // State untuk melacak ID yang sedang dihapus
 
   const refreshData = async () => {
-    setLoading(true);
+    // Tidak mengatur loading ke true agar refresh di latar belakang tidak terlalu mengganggu
     const data = await fetchSubmissionsData();
     setSubmissionsData(data);
     setLoading(false);
   };
 
   const handleSignOut = async () => {
-    await signOut({ redirect: false }); // Prevent automatic redirect
-    router.push("/"); // Manually redirect to home page
+    await signOut({ callbackUrl: "/" });
+  };
+
+  // Fungsi untuk menangani penghapusan
+  const handleDelete = async (submissionId) => {
+    setIsDeleting(submissionId); // Set ID item yang sedang dihapus
+    const result = await deleteSubmission(submissionId);
+    if (result.success) {
+      toast.success("Pengiriman berhasil dihapus!");
+      await refreshData(); // Panggil refreshData untuk memuat ulang daftar
+    } else {
+      toast.error(
+        `Gagal menghapus: ${result.error || "Kesalahan tidak diketahui"}`,
+      );
+    }
+    setIsDeleting(null); // Reset status loading setelah selesai
   };
 
   useEffect(() => {
@@ -71,12 +86,12 @@ export default function SubmissionsPageWrapper() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      if (status === "authenticated") {
-        const hasPending =
-          submissionsData?.previewDataMap &&
-          Array.from(submissionsData.previewDataMap.values()).some(
-            (img) => img.status === "Pending" || img.status === "Processing"
-          );
+      if (status === "authenticated" && submissionsData) {
+        const hasPending = Array.from(
+          submissionsData.previewDataMap.values(),
+        ).some(
+          (img) => img.status === "Pending" || img.status === "Processing",
+        );
         if (hasPending) {
           refreshData();
         }
@@ -125,7 +140,7 @@ export default function SubmissionsPageWrapper() {
       </div>
       <div className="flex items-center justify-between w-full">
         <h1 className="text-xl md:text-2xl font-bold my-4">Semua Pengiriman</h1>
-        {session.user.role === "admin" && (
+        {session?.user?.role === "admin" && (
           <Link href="/admin/dashboard">
             <Button
               size="sm"
@@ -140,7 +155,8 @@ export default function SubmissionsPageWrapper() {
           </Link>
         )}
       </div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
+      {/* ===== PERUBAHAN DI SINI ===== */}
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,450px))] justify-start gap-4">
         {allSubmissions.length === 0 ? (
           <p className="text-muted-foreground">
             Tidak ada pengiriman ditemukan.
@@ -155,13 +171,13 @@ export default function SubmissionsPageWrapper() {
 
             return (
               <Card key={submission.id} className={"py-0"}>
-                <CardContent className="p-4 flex items-center gap-4 flex-col">
+                <CardContent className="p-4 flex flex-col gap-4">
                   <ImagePreview
                     imageUrl={preview?.imageUrl}
                     username={submission.username}
                   />
 
-                  <div className="w-full flex flex-col gap-y-[0.5em]">
+                  <div className="w-full flex flex-col gap-y-2">
                     <p className="font-semibold capitalize">
                       {submission.username}
                     </p>
@@ -210,10 +226,16 @@ export default function SubmissionsPageWrapper() {
                       <>
                         <p className="text-sm">
                           Klasifikasi:{" "}
-                          <span className="text-blue-600">
+                          <span className="font-semibold text-blue-600">
                             {preview.classificationResult}
-                          </span>{" "}
-                          (Kepercayaan: {preview.confidence?.toFixed(2) ?? "–"})
+                          </span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          (Kepercayaan:{" "}
+                          {preview.confidence
+                            ? (preview.confidence * 100).toFixed(0)
+                            : "0"}
+                          %)
                         </p>
                         <p className="text-sm">
                           Jumlah Sampah: {preview.wasteCount ?? "–"}
@@ -221,41 +243,40 @@ export default function SubmissionsPageWrapper() {
                       </>
                     )}
                   </div>
-                  <form action={deleteSubmission.bind(null, submission.id)}>
-                    <div className="flex flex-row gap-2 items-center justify-center gap-x-4">
-                      {isProcessing ? (
-                        <Button
-                          className="text-gray-400 cursor-not-allowed py-2 px-6 w-32"
-                          size="lg"
-                        >
-                          Lihat Detail
-                        </Button>
-                      ) : (
-                        <Link
-                          className="text-blue-600 hover:underline cursor-pointer"
-                          href={`/submissions/${submission.id}`}
-                        >
-                          <Button
-                            size="lg"
-                            className="py-2 px-6 w-32 cursor-pointer"
-                          >
-                            Lihat Detail
-                          </Button>
-                        </Link>
-                      )}
 
-                      {session?.user?.role === "admin" && ( // Hanya tampilkan tombol hapus untuk admin
-                        <button
+                  <div className="flex flex-row gap-4 items-center justify-center w-full">
+                    <Link
+                      className="w-full"
+                      href={`/submissions/${submission.id}`}
+                    >
+                      <Button
+                        size="lg"
+                        className="py-2 w-full"
+                        disabled={isProcessing}
+                      >
+                        Lihat Detail
+                      </Button>
+                    </Link>
+
+                    {session?.user?.role === "admin" && (
+                      <form
+                        action={() => handleDelete(submission.id)}
+                        className="w-full"
+                      >
+                        <Button
                           type="submit"
-                          className="text-red-600 border border-red-500 py-2 px-6 rounded-md cursor-pointer w-32"
                           variant="destructive"
                           size="lg"
+                          className="py-2 w-full"
+                          disabled={isDeleting === submission.id}
                         >
-                          Hapus
-                        </button>
-                      )}
-                    </div>
-                  </form>
+                          {isDeleting === submission.id
+                            ? "Menghapus..."
+                            : "Hapus"}
+                        </Button>
+                      </form>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             );

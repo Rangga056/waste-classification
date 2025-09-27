@@ -1,81 +1,86 @@
-// src/app/api/uploads/route.js
+// src/app/api/uploads/route.js// src/app/api/uploads/route.js
 import { db } from "@/db/db";
 import {
   submissions,
   submissionsImages,
   classifications,
   users,
-} from "@/db/schema"; // Impor tabel users
+} from "@/db/schema";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs";
 import path from "path";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
+import { auth } from "@/auth"; // <-- Pastikan ini sudah diperbarui
+import { NextResponse } from "next/server";
 
-// Inisialisasi Gemini API dengan kunci API Anda
-const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY);
-// GANTI MODEL INI: gemini-pro-vision -> gemini-1.5-flash
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const genAI = new GoogleGenerativeAI(
+  process.env.GEMINI_API_KEY_WASTE_CLASSIFICATION,
+);
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-// Fungsi pembantu untuk mengonversi Buffer ke Base64
 function bufferToBase64(buffer, mimeType) {
   return `data:${mimeType};base64,${buffer.toString("base64")}`;
 }
 
 export async function POST(req) {
-  const session = await getServerSession(authOptions);
-
-  if (!session || !session.user) {
-    return new Response(JSON.stringify({ message: "Tidak terautentikasi." }), {
-      status: 401,
-    });
-  }
-
-  const formData = await req.formData();
-  const username = session.user.name || session.user.email;
-  let userId = session.user.id; // Dapatkan userId dari sesi
-
-  const images = formData.getAll("images");
-
-  if (images.length === 0) {
-    return new Response(
-      JSON.stringify({ message: "Silakan pilih setidaknya satu file gambar." }),
-      { status: 400 }
-    );
-  }
-
-  let submissionId;
-
+  console.log("--- API /api/uploads POST request received ---");
   try {
+    const session = await auth();
+    console.log("Session object:", session);
+
+    if (!session || !session.user) {
+      console.error("Upload attempt without authentication.");
+      return NextResponse.json(
+        { message: "Tidak terautentikasi." },
+        { status: 401 },
+      );
+    }
+
+    const formData = await req.formData();
+    const username = session.user.name || session.user.email;
+    let userId = session.user.id;
+    console.log(`Processing upload for user: ${username} (ID: ${userId})`);
+
+    const images = formData.getAll("images");
+
+    if (images.length === 0) {
+      return NextResponse.json(
+        { message: "Silakan pilih setidaknya satu file gambar." },
+        { status: 400 },
+      );
+    }
+
+    console.log(`${images.length} images found in form data.`);
+
     // --- Validasi userId sebelum menyisipkan ke submissions ---
-    // Pastikan userId dari sesi benar-benar ada di tabel users
-    const existingUserInDb = await db.query.users.findFirst({
-      where: (u, { eq }) => eq(u.id, userId),
-    });
+    const [existingUserInDb] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
     if (!existingUserInDb) {
       console.error(
-        `User ID ${userId} dari sesi tidak ditemukan di tabel users.`
+        `User ID ${userId} dari sesi tidak ditemukan di tabel users.`,
       );
-      return new Response(
-        JSON.stringify({
-          message:
-            "User ID tidak valid. Silakan login ulang atau hubungi administrator.",
-        }),
-        { status: 400 }
+      return NextResponse.json(
+        { message: "User ID tidak valid. Silakan login ulang." },
+        { status: 400 },
       );
     }
-    // --- Akhir validasi userId ---
 
-    const [insertedSubmission] = await db.insert(submissions).values({
-      userId: userId,
-      username: username,
-    });
-    submissionId = insertedSubmission.insertId;
+    console.log("User validated. Inserting into submissions table...");
+    const [insertedSubmission] = await db
+      .insert(submissions)
+      .values({
+        userId: userId,
+        username: username,
+      })
+      .returning();
+    const submissionId = insertedSubmission.id;
+    console.log(`Submission created with ID: ${submissionId}`);
 
     const classificationPromises = [];
 
@@ -93,12 +98,15 @@ export async function POST(req) {
 
       const imageUrl = `/api/uploads/${filename}`;
 
-      const [insertedImage] = await db.insert(submissionsImages).values({
-        submissionId,
-        imageUrl,
-        status: "Pending",
-      });
-      const imageId = insertedImage.insertId;
+      const [insertedImage] = await db
+        .insert(submissionsImages)
+        .values({
+          submissionId,
+          imageUrl,
+          status: "Pending",
+        })
+        .returning();
+      const imageId = insertedImage.id;
 
       classificationPromises.push(
         (async () => {
@@ -160,7 +168,7 @@ export async function POST(req) {
           } catch (geminiError) {
             console.error(
               `Error dari Gemini API untuk gambar ${file.name}:`,
-              geminiError
+              geminiError,
             );
             classificationResult = "Gagal Klasifikasi";
             confidence = 0.0;
@@ -187,22 +195,22 @@ export async function POST(req) {
             revalidatePath("/admin/users");
             revalidatePath("/admin/classification");
           }
-        })()
+        })(),
       );
     }
 
-    return new Response(
-      JSON.stringify({
+    return NextResponse.json(
+      {
         message: "Unggahan diterima, klasifikasi dimulai!",
         submissionId,
-      }),
-      { status: 200 }
+      },
+      { status: 200 },
     );
   } catch (error) {
-    console.error("Error rute unggahan:", error);
-    return new Response(
-      JSON.stringify({ message: "Terjadi kesalahan server internal." }),
-      { status: 500 }
+    console.error("!!! FATAL ERROR in /api/uploads route:", error);
+    return NextResponse.json(
+      { message: "Terjadi kesalahan server internal.", error: error.message },
+      { status: 500 },
     );
   }
 }
