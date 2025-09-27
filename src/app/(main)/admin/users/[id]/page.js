@@ -1,6 +1,5 @@
 // src/app/(main)/admin/users/[id]/page.js
-import { authOptions } from "@/auth"; // Impor authOptions
-import { getServerSession } from "next-auth"; // Impor getServerSession
+import { auth } from "@/auth"; // Impor authOptions
 import { redirect, notFound } from "next/navigation";
 import { db } from "@/db/db";
 import {
@@ -17,7 +16,7 @@ import { RefreshCw, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default async function AdminUserDetailPage({ params }) {
-  const session = await getServerSession(authOptions); // Dapatkan sesi di server
+  const session = await auth(); // Dapatkan sesi di server
 
   // Proteksi: Hanya admin yang bisa mengakses
   if (!session || !session.user || session.user.role !== "admin") {
