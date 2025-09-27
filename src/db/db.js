@@ -1,4 +1,3 @@
-import mysql from "mysql2/promise"; // src/db/db.js
 import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "../db/schema.js";
 import postgres from "postgres";
