@@ -1,13 +1,11 @@
-// src/app/api/uploads/route.js
 import { db } from "@/db/db";
 import { submissions, submissionsImages, users } from "@/db/schema";
 import { v4 as uuidv4 } from "uuid";
-import fs from "fs";
-import path from "path";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabaseClient"; // Import supabase client
 
 export async function POST(req) {
   try {
@@ -53,14 +51,22 @@ export async function POST(req) {
       const safeFileName = file.name.replace(/\s+/g, "-");
       const filename = `${uuidv4()}-${safeFileName}`;
 
-      const uploadDir = path.join(process.cwd(), "public", "uploads");
-      if (!fs.existsSync(uploadDir))
-        fs.mkdirSync(uploadDir, { recursive: true });
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from("waste-images") // Ganti dengan nama bucket Anda
+        .upload(filename, bytes, {
+          contentType: file.type,
+        });
 
-      const filepath = path.join(uploadDir, filename);
-      fs.writeFileSync(filepath, bytes);
+      if (error) {
+        throw error;
+      }
 
-      const imageUrl = `/api/uploads/${filename}`;
+      const { data: publicUrlData } = supabase.storage
+        .from("waste-images") // Ganti dengan nama bucket Anda
+        .getPublicUrl(filename);
+
+      const imageUrl = publicUrlData.publicUrl;
 
       const [insertedImage] = await db
         .insert(submissionsImages)

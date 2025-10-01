@@ -5,8 +5,6 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
 import mime from "mime-types";
 
 // ===== MENGGUNAKAN KONFIGURASI YANG ANDA MINTA =====
@@ -38,14 +36,15 @@ export async function POST(req) {
     revalidatePath("/submissions");
     revalidatePath(`/submissions/${submissionId}`);
 
-    const filename = decodeURIComponent(imageUrl.split("/").pop());
-    const filepath = path.join(process.cwd(), "public", "uploads", filename);
-    const imageBuffer = await fs.readFile(filepath);
+    const response = await fetch(imageUrl);
+    const imageBuffer = await response.arrayBuffer();
+    const mimeType =
+      response.headers.get("content-type") || "application/octet-stream";
 
     const image = {
       inlineData: {
-        data: imageBuffer.toString("base64"),
-        mimeType: mime.lookup(filepath) || "application/octet-stream",
+        data: Buffer.from(imageBuffer).toString("base64"),
+        mimeType,
       },
     };
 
