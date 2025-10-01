@@ -21,19 +21,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        // Logika autentikasi untuk admin123
-        if (
-          credentials.username === "admin123" &&
-          credentials.password === "123456"
-        ) {
-          return {
-            id: "b67fcb00-62e8-11f0-b5ee-448763b8acc4",
-            name: "Administrator",
-            email: "admin@example.com",
-            role: "admin",
-          };
-        }
-
         // Untuk user biasa yang terdaftar di DB
         const userFound = await db.query.users.findFirst({
           where: (u, { eq }) => eq(u.email, credentials.username),
@@ -42,7 +29,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (userFound && userFound.password) {
           const passwordMatch = await bcrypt.compare(
             credentials.password,
-            userFound.password,
+            userFound.password
           );
 
           if (passwordMatch) {
