@@ -6,21 +6,17 @@ import { submissions, submissionsImages, classifications } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { supabaseAdmin } from "@/lib/supabaseAdmin"; // Gunakan klien admin
 
 export async function deleteSubmission(submissionId) {
   const session = await auth();
 
-  // Dapatkan detail submission yang akan dihapus
   const [submissionToDelete] = await db
     .select({ userId: submissions.userId })
     .from(submissions)
     .where(eq(submissions.id, submissionId));
 
-  // Proteksi:
-  // 1. Pastikan pengguna terautentikasi
-  // 2. Jika bukan admin, pastikan userId sesi cocok dengan userId submission
   if (!session || !session.user) {
-    console.error("Akses ditolak: Pengguna tidak terautentikasi.");
     return {
       error: "Unauthorized: You must be logged in to perform this action.",
     };
@@ -30,36 +26,50 @@ export async function deleteSubmission(submissionId) {
     session.user.role !== "admin" &&
     session.user.id !== submissionToDelete?.userId
   ) {
-    console.error(
-      "Akses ditolak: Anda tidak memiliki izin untuk menghapus submission ini.",
-    );
     return { error: "Forbidden: You can only delete your own submissions." };
   }
 
   try {
     const images = await db
-      .select()
+      .select({
+        id: submissionsImages.id,
+        imageUrl: submissionsImages.imageUrl,
+      })
       .from(submissionsImages)
       .where(eq(submissionsImages.submissionId, submissionId));
 
-    const imageIds = images.map((img) => img.id);
+    if (images.length > 0) {
+      // Hapus file dari Supabase Storage
+      const filePaths = images.map((image) => {
+        // Ekstrak path file dari URL lengkap
+        const urlParts = image.imageUrl.split("/waste-images/");
+        return urlParts[1];
+      });
 
-    if (imageIds.length) {
+      const { error: storageError } = await supabaseAdmin.storage
+        .from("waste-images")
+        .remove(filePaths);
+
+      if (storageError) {
+        console.error("Storage Deletion Error:", storageError.message);
+        // Anda bisa memilih untuk menghentikan proses jika gagal hapus file
+        // atau tetap melanjutkan untuk menghapus data dari DB.
+      }
+
+      const imageIds = images.map((img) => img.id);
       await db
         .delete(classifications)
         .where(inArray(classifications.imageId, imageIds));
     }
 
+    // Hapus data dari database
     await db
       .delete(submissionsImages)
       .where(eq(submissionsImages.submissionId, submissionId));
-
     await db.delete(submissions).where(eq(submissions.id, submissionId));
 
     revalidatePath("/submissions");
     revalidatePath("/admin/dashboard");
-    revalidatePath("/admin/users");
-    revalidatePath("/admin/classification");
 
     return { success: true };
   } catch (error) {

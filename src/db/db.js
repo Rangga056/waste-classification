@@ -11,7 +11,8 @@ if (!connectionString) {
 // Disable prefetch as it is not supported for "Transaction" pool mode
 export const client = postgres(connectionString, {
   prepare: false,
-  max: 1, // Limit connections for serverless environments
+  idle_timeout: 20, // Tutup koneksi setelah 20 detik tidak aktif
+  max_lifetime: 60 * 5, // Atur ulang koneksi setiap 5 menit
 });
 
 export const db = drizzle(client, { schema });
