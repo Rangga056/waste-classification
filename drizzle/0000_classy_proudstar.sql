@@ -55,7 +55,7 @@ CREATE TABLE "users" (
 --> statement-breakpoint
 CREATE TABLE "verificationTokens" (
 	"identifier" varchar(255) NOT NULL,
-	"token" varchar(255) PRIMARY KEY NOT NULL,
+	"token" varchar(255) NOT NULL,
 	"expires" timestamp NOT NULL,
 	CONSTRAINT "verificationTokens_identifier_token_pk" PRIMARY KEY("identifier","token")
 );
