@@ -11,7 +11,7 @@ import mime from "mime-types";
 const genAI = new GoogleGenerativeAI(
   process.env.GEMINI_API_KEY_WASTE_CLASSIFICATION
 );
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
 export async function POST(req) {
   let imageId;
@@ -37,6 +37,12 @@ export async function POST(req) {
     revalidatePath(`/submissions/${submissionId}`);
 
     const response = await fetch(imageUrl);
+    
+    if (!response.ok) {
+      console.error(`Failed to fetch image from URL. Status: ${response.status}, Text: await response.text()`);
+      throw new Error("Gagal mengambil gambar dari Storage. Pastikan bucket 'waste-images' di-set menjadi Public.");
+    }
+
     const imageBuffer = await response.arrayBuffer();
     const mimeType =
       response.headers.get("content-type") || "application/octet-stream";

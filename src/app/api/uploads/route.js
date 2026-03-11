@@ -5,9 +5,11 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient"; // Import supabase client
+import { supabaseAdmin as supabase } from "@/lib/supabaseAdmin"; // Import supabase admin key as 'supabase'
 
 export async function POST(req) {
+  let submissionId = null;
+
   try {
     const session = await auth();
     if (!session || !session.user) {
@@ -44,7 +46,7 @@ export async function POST(req) {
       .insert(submissions)
       .values({ userId, username })
       .returning();
-    const submissionId = insertedSubmission.id;
+    submissionId = insertedSubmission.id;
 
     for (const file of images) {
       const bytes = Buffer.from(await file.arrayBuffer());
@@ -93,6 +95,18 @@ export async function POST(req) {
     );
   } catch (error) {
     console.error("!!! FATAL ERROR in /api/uploads route:", error);
+
+    // CLEANUP orphaned submission if upload failed
+    if (submissionId) {
+      console.log(`Upload failed. Deleting orphaned submission: ${submissionId}`);
+      try {
+        await db.delete(submissionsImages).where(eq(submissionsImages.submissionId, submissionId));
+        await db.delete(submissions).where(eq(submissions.id, submissionId));
+      } catch (cleanupError) {
+        console.error("Failed to cleanup orphaned submission:", cleanupError);
+      }
+    }
+
     return NextResponse.json(
       {
         message: "Terjadi kesalahan server internal saat mengunggah.",
